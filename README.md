@@ -1,5 +1,15 @@
 # Backend Technical Audit: cynbit.in
 
+## Summary (in my words)
+
+I analysed the website using Chrome DevTools in an Incognito window. I used the Network tab and Lighthouse in mobile mode. I did not perform any active testing or scanning, and I did not interact with the candidate portal.
+
+The site is built with Next.js and hosted on Vercel. It is served efficiently, with Brotli compression, an edge cache and HTTPS. However, I noticed that some security headers were missing (CSP and clickjacking protection, among others), the Largest Contentful Paint was slow (4.9 s), and there was unnecessary JavaScript (around 119 KiB). I also saw a possible location mismatch between the edge and the server (the edge is in Mumbai, but the server may be in the US). Analytics also loads without a consent notice.
+
+I could not see any forms or APIs that required a login, so that part of the report (section 5.7) only lists what I would check, not findings.
+
+I used an AI tool to help me structure and write this write-up. The observations and screenshots are from my own DevTools session, and I am able to explain each finding.
+
 **Prepared by:** Kunal Mathur, for the Cynbit Backend Developer Intern assessment
 **Date of review:** Fri 30 Oct 2026
 **Scope:** the public homepage `https://www.cynbit.in/` and the requests the browser makes when it loads
