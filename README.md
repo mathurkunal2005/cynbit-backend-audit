@@ -19,7 +19,7 @@
 | Hosting / edge | `Server: Vercel`, `X-Vercel-Id: bom1::...` (Mumbai edge), `X-Vercel-Cache: HIT` |
 | Rendering | Home page is prerendered (static) and served from the edge cache |
 | Third parties | Google Analytics 4 (`js?id=G-...` plus a `collect` call returning 204), Google Fonts (Material Symbols stylesheet) |
-| Navigation | The home page prefetches data for about 8 other routes (story, team, careers, impact, services, products, bitelevate, contact) |
+| Navigation | The home page prefetches data for about 9 other routes (story, team, careers, impact, services, products, bitelevate, contact, case-studies) |
 | Size | 44–45 requests on a fresh load, about 1.7 MB transferred (1,683 KiB per Lighthouse) |
 
 ## 3. What is already good
@@ -44,7 +44,7 @@
 | 7 | Performance | Largest Contentful Paint **4.9 s** (rated poor); Speed Index 4.6 s | Medium |
 | 8 | Performance | Render-blocking requests (estimated saving 1,100 ms) | Medium |
 | 9 | Performance | About 119 KiB of unused JavaScript, 2.4 s main-thread work, 4 long tasks, 11 KiB legacy JavaScript | Low–Medium |
-| 10 | Performance | The home page prefetches about 8 routes up front | Info |
+| 10 | Performance | The home page prefetches about 9 routes up front | Info |
 | 11 | Accessibility | List markup problems: `<li>` outside `<ul>`/`<ol>`, and lists containing non-`<li>` elements | Low |
 | 12 | API / data format | Page data is served as React Server Component payloads (`text/x-component`) from `?_rsc=` URLs, not a documented JSON API (observation, see 4a) | Info |
 | 13 | Hosting region | `X-Vercel-Id: bom1::iad1::...` suggests the edge is in Mumbai but the origin or compute region is `iad1` (US East) | Low–Medium (to verify) |
@@ -184,6 +184,23 @@ Make list markup valid: wrap every `<li>` in a `<ul>` or `<ol>`, and put only `<
 
 This runs functions in Mumbai instead of the US default. Verify first by checking the project's region in the Vercel dashboard.
 
+### 5.7 Backend hardening for the parts I could not test
+
+I only looked at public pages, so I did not see Cynbit's contact form, application form or candidate portal. These are things I would check on any backend like it, written as suggestions and not as findings.
+
+| Area | What to check | Why |
+|---|---|---|
+| Input validation | Every field is validated on the **server** (type, length, format), not only in the browser | The browser can be bypassed |
+| Rate limiting | Form and login endpoints return `429` with `Retry-After` after a few requests per minute per client | Stops spam and abuse |
+| Error responses | One consistent JSON shape (`error`, `requestId`) and correct status codes (400, 422, 429), with no stack traces | Easier for clients, and no internal details leak |
+| Logging | A request id on every log line, structured (JSON) logs, and alerts on error spikes | Lets the team trace a failed submission |
+| Database access | Parameterised queries or an ORM, never SQL built from strings | Prevents SQL injection |
+| Caching | Static pages are prerendered and cached (already the case). For content that changes, use on-demand revalidation such as `revalidatePath` | Fresh content without a rebuild |
+| Duplicate submissions | An idempotency key or a disabled submit button after the first click | Avoids double applications |
+| Candidate links | The portal link in an application email identifies the candidate by an ID in the URL. If that link alone grants access, consider expiring links or requiring a sign-in | A leaked or forwarded link would expose that candidate's page |
+
+An example handler with validation, a rate limit, structured errors and request-id logging is in `fixes/contact-route.example.js`. It is an illustration and is not taken from Cynbit's code.
+
 ## 6. Priorities
 
 1. Add the four small security headers (#2, #3, #4, #5). It takes minutes and has no side effects.
@@ -192,6 +209,7 @@ This runs functions in Mumbai instead of the US default. Verify first by checkin
 4. Reduce unused JavaScript (#9) and review prefetching (#10).
 5. Fix the list markup (#11).
 6. Confirm and, if needed, change the compute region (#13) and the analytics consent flow (#14).
+7. Check validation, rate limiting, logging and link handling on the forms and the portal (5.7).
 
 ## 7. Repository contents and how to reproduce
 
@@ -201,6 +219,7 @@ assets/                    header screenshots used as evidence
 fixes/next.config.js       security headers (section 5.1)
 fixes/not-found.js         404 metadata (section 4b)
 fixes/vercel.json          compute region (section 5.6)
+fixes/contact-route.example.js   example form handler (section 5.7)
 tools/check-headers.sh     passive header checker (one HEAD request)
 tools/sample-headers.txt   headers observed on the main document, transcribed from my screenshots
 ```
